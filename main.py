@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.messagebox as message_box
 import random as rd
 import pyperclip
+import json
 # documentation tkinter = https://web.archive.org/web/20200313162549/http://effbot.org/tkinterbook/canvas.htm
 
 
@@ -39,15 +40,49 @@ def add_pressed():
         message_box.showerror(title="Error", message="Please fill out all fields.")
         return
 
-    is_ok = message_box.askokcancel(title=website,
-                                    message=f"These are the details entered:\nEmail: {email}\nPassword: {password}\n"
-                                            f"Is it okay to save?")
+    new_data = {website: {
+        "email": email,
+        "password": password
+    }}
 
-    if is_ok:
-        with open("pfile.txt", mode="a") as p_file:
-            p_file.write(f"{website} | {email} | {password}\n")
-            website_entry.delete(0, 'end')
-            password_entry.delete(0, 'end')
+    try:
+        with open("data.json", mode="r") as data_file:
+            data = json.load(data_file)
+
+    except FileNotFoundError:
+        with open("data.json", mode="w") as data_file:
+            json.dump(new_data, data_file, indent=4)
+
+    else:
+        data.update(new_data)
+
+        with open("data.json", mode="w") as data_file:
+            json.dump(data, data_file, indent=4)
+
+    finally:
+        website_entry.delete(0, END)
+        password_entry.delete(0, END)
+
+
+# ---------------------------- SEARCH WEBSITE ------------------------------- #
+def search_website():
+    website = website_entry.get()
+
+    if not website:
+        return
+
+    with open("data.json", mode="r") as data_file:
+        try:
+            websites = json.load(data_file)
+            email = websites[website]["email"]
+            password = websites[website]["password"]
+        except KeyError:
+            message_box.showerror("Error", "Website doesn't exist")
+        except FileNotFoundError:
+            message_box.showerror("Error", "No data file found.")
+        else:
+            message_box.showinfo(website, f"Email: {email}\nPassword: {password}")
+            pyperclip.copy(password)
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -71,9 +106,9 @@ password_label = Label(text="Password:")
 password_label.grid(row=3, column=0)
 
 # Entries
-website_entry = Entry(width=35)
+website_entry = Entry(width=21)
 website_entry.focus()
-website_entry.grid(row=1, column=1, columnspan=2)
+website_entry.grid(row=1, column=1)
 email_entry = Entry(width=35)
 email_entry.grid(row=2, column=1, columnspan=2)
 email_entry.insert(0, "bri_alldred@live.co.uk")
@@ -85,5 +120,7 @@ generate_button = Button(text="Generate Password", command=generate_pass)
 generate_button.grid(row=3, column=2)
 add_button = Button(text="Add", command=add_pressed, width=36)
 add_button.grid(row=4, column=1, columnspan=2)
+search_website_button = Button(text="Search for website", command=search_website)
+search_website_button.grid(row=1, column=2)
 
 window.mainloop()
